@@ -11,7 +11,7 @@ def get_db_connection():
         traceback.print_exc()
         return None
 
-def get_db_coursor(conn):
+def get_db_cursor(conn):
     try:
         return conn.cursor()
     except:

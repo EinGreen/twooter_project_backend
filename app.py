@@ -1,5 +1,5 @@
 import traceback
-import dbconnect
+import dbshorts
 from flask import Flask, request, Response
 import json
 import mariadb
