@@ -26,6 +26,8 @@ def run_insertion(statement, params):
         cursor.execute(statement, params)
         conn.commit()
         result = cursor.lastrowid
+    except FileNotFoundError:
+        print("Invalid request, was not found on the server")
     except:
         traceback.print_exc()
         print("Unknown Error has occured")
