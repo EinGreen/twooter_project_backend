@@ -1,3 +1,4 @@
+import mariadb
 import dbconnect
 import traceback
 
@@ -10,6 +11,9 @@ def run_selection(statement, params):
     try:
         cursor.execute(statement, params)
         result = cursor.fetchall()
+    except mariadb.OperationalError:
+        traceback.print_exc()
+        print("mariadb does not understand the request")
     except:
         traceback.print_exc()
         print("Some error has occured, I don't freakin know dude")
@@ -26,6 +30,8 @@ def run_insertion(statement, params):
         cursor.execute(statement, params)
         conn.commit()
         result = cursor.lastrowid
+    except mariadb.DataError:
+        print("Bad Request, Database Error")
     except FileNotFoundError:
         print("Invalid request, was not found on the server")
     except:
