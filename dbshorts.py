@@ -14,6 +14,9 @@ def run_selection(statement, params):
     except mariadb.OperationalError:
         traceback.print_exc()
         print("mariadb does not understand the request")
+    except IndexError:
+        traceback.print_exc()
+        print("could not find")
     except:
         traceback.print_exc()
         print("Some error has occured, I don't freakin know dude")
