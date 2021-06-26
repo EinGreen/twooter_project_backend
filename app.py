@@ -34,7 +34,7 @@ def create_user():
 
 # Get logged in users
 @app.get("/api/user")
-def get_logged_in():
+def get_user():
     try:
         user_id = request.json["userId"]
     except IndexError:
@@ -44,12 +44,14 @@ def get_logged_in():
         print("I have no idea what happened, but something went wrong")
         return Response("Data Error", mimetype="text/plain", status=400)
 
-    user_info = dbshorts.run_selection("select * from users u inner join user_session us on u.id = us.user_id where us.user_id=?", [user_id])
+    user_info = dbshorts.run_selection("select u.id, username, email, bio, birthday, image_url, banner_url from users u inner join user_session us on u.id = us.user_id where us.user_id=?", [user_id])
     if(user_info == None):
         return Response("User not logged in", mimetype="text/plain", status=500)
+    elif(len(user_info) == 0):
+        return Response("User does not exsist", mimetype="text/plain", status=404)
     else:
         logged_in_dictionary = {
-            "userId": user_info[0][7], "username": user_info[0][0], "email": user_info[0][1], "bio": user_info[0][4], "birthdate": user_info[0][3], "imageUrl": user_info[0][5], "bannerUrl": user_info[0][6]}
+            "userId": user_info[0][0], "username": user_info[0][1], "email": user_info[0][2], "bio": user_info[0][3], "birthdate": user_info[0][4], "imageUrl": user_info[0][5], "bannerUrl": user_info[0][6]}
         log_json = json.dumps(logged_in_dictionary, default=str)
         return Response(log_json, mimetype="application/json", status=201)
 
