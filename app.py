@@ -8,6 +8,7 @@ import sys
 
 app = Flask(__name__)
 
+# TODO: Make sure to hash and salt passwords after you successfully created a function to delete users
 # *User api
 # creating new user
 @app.post("/api/newuser")
@@ -55,6 +56,27 @@ def get_user():
         log_json = json.dumps(logged_in_dictionary, default=str)
         return Response(log_json, mimetype="application/json", status=201)
 
+# Delete User
+@app.delete("/api/user")
+def delete_user():
+    try:
+        token = str(request.json['loginToken'])
+        password = request.json['password']
+    except:
+        traceback.print_exc()
+        print("You tried, but failed")
+
+    user_info = dbshorts.run_selection("select u.id, u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ? and u.password = ?", [token, password,])
+    if(user_info != None):
+        rows = dbshorts.run_deletion("delete from users where id = ?", [user_info[0][0],])
+        if(rows == 1):
+            return Response(f"{user_info[0][1]} has been deleted", mimetype="text/plain", status=200)
+        else:
+            return Response("DB Error", mimetype="text/plain", status=500)
+    else:
+        return Response("Could not fine user", mimetype="text/plain", status=404)
+
+
 # *Login api
 # Login
 @app.post("/api/login")
@@ -77,7 +99,6 @@ def login():
         traceback.print_exc()
         print("Oh no, something went wrong")
 
-    print(rows_inserted)
     if(rows_inserted != None):
         login_dictionary = { "login_token": token }
         login_json = json.dumps(login_dictionary, default=str)

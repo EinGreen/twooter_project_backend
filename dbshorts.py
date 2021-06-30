@@ -53,6 +53,8 @@ def run_deletion(statement, params):
         cursor.execute(statement, params)
         conn.commit()
         result = cursor.rowcount
+    except mariadb.ProgrammingError:
+        print("Could not find Table")
     except:
         traceback.print_exc()
         print("Nani? Bakana, I can't delete?")
