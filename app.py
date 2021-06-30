@@ -86,13 +86,21 @@ def login():
         return Response("Invalid Login, Please Try Again", mimetype="text/plain", status=400)
 
 # Logout
-# ! Need to fix, do not run until you can GET user/user_session
-@app.delete("/api")
+@app.delete("/api/logout")
 def logout():
     try:
-        dbshorts.run_deletion("", [])
+        login_token = str(request.json['loginToken'])
     except:
         traceback.print_exc()
+        print("something went wrong, unknown error")
+
+    rows = dbshorts.run_deletion("delete from user_session where login_token = ?", [login_token,])
+    if(rows == 1):
+        return Response("Logout Successful", mimetype="text/plain", status=200)
+    else:
+        return Response("DB Error", mimetype="text/plain", status=500)
+
+
 
 if(len(sys.argv) > 1):
     mode = sys.argv[1]
