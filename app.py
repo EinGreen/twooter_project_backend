@@ -2,13 +2,15 @@ import traceback
 import dbshorts
 from flask import Flask, request, Response
 import json
-import mariadb
 import secrets
 import sys
 
+# ! May or may not be needed
+import hashlib
+import mariadb
+
 app = Flask(__name__)
 
-# TODO: Make sure to hash and salt passwords after you successfully created a function to delete users
 # *User api
 # creating new user
 @app.post("/api/newuser")
@@ -19,12 +21,14 @@ def create_user():
         user_pass = request.json["password"]
         user_bday = request.json["birthday"]
         user_bio = request.json["bio"]
+        salt = dbshorts.create_salt()
     except:
         traceback.print_exc()
         print("Welp, something went wrong")
         return Response("Data Error, request invalid", mimetype="text/plain", status=400)
 
-    newuser_id = dbshorts.run_insertion("insert into users (username, email, password, birthday, bio) values (?,?,?,?,?)", [username, user_email, user_pass, user_bday, user_bio])
+    hash_pass = dbshorts.create_hash_pass(salt, user_pass)
+    newuser_id = dbshorts.run_insertion("insert into users (username, email, password, birthday, bio, salt) values (?,?,?,?,?,?)", [username, user_email, hash_pass, user_bday, user_bio, salt])
     if(newuser_id == None):
         return Response("Database Error", mimetype="text/plain", status=500)
     else:
@@ -66,7 +70,9 @@ def delete_user():
         traceback.print_exc()
         print("You tried, but failed")
 
-    user_info = dbshorts.run_selection("select u.id, u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ? and u.password = ?", [token, password,])
+    username = dbshorts.run_selection("select u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", [token])
+    hash_pass = dbshorts.get_hash_pass(username[0][0], password)
+    user_info = dbshorts.run_selection("select u.id, u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ? and u.password = ?", [token, hash_pass,])
     if(user_info != None):
         rows = dbshorts.run_deletion("delete from users where id = ?", [user_info[0][0],])
         if(rows == 1):
@@ -89,9 +95,10 @@ def login():
         print("Welp, something went wrong")
         return Response("User Data Error", mimetype="text/plain", status=400)
 
+    hash_pass = dbshorts.get_hash_pass(username, password)
     rows_inserted = None
     try:
-        user = dbshorts.run_selection("select id from users u where u.username=? and u.password=?", [username, password])
+        user = dbshorts.run_selection("select id from users u where u.username=? and u.password=?", [username, hash_pass])
         if(len(user) == 1):
             token = secrets.token_urlsafe(55)
             rows_inserted = dbshorts.run_insertion("insert into user_session (login_token, user_id) values (?,?)", [token, user[0][0]])
