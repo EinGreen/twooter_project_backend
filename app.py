@@ -13,6 +13,7 @@ app = Flask(__name__)
 
 # *User api
 # creating new user
+# TODO try and make it so that it can get the image_url and/or the banner_url
 @app.post("/api/newuser")
 def create_user():
     try:
@@ -26,9 +27,10 @@ def create_user():
         traceback.print_exc()
         print("Welp, something went wrong")
         return Response("Data Error, request invalid", mimetype="text/plain", status=400)
-
     hash_pass = dbshorts.create_hash_pass(salt, user_pass)
-    newuser_id = dbshorts.run_insertion("insert into users (username, email, password, birthday, bio, salt) values (?,?,?,?,?,?)", [username, user_email, hash_pass, user_bday, user_bio, salt])
+
+    newuser_id = dbshorts.run_insertion("insert into users (username, email, password, birthday, bio, salt) values (?,?,?,?,?,?)", 
+                                        [username, user_email, hash_pass, user_bday, user_bio, salt])
     if(newuser_id == None):
         return Response("Database Error", mimetype="text/plain", status=500)
     else:
@@ -49,7 +51,8 @@ def get_user():
         print("I have no idea what happened, but something went wrong")
         return Response("Data Error", mimetype="text/plain", status=400)
 
-    user_info = dbshorts.run_selection("select u.id, username, email, bio, birthday, image_url, banner_url from users u inner join user_session us on u.id = us.user_id where us.user_id=?", [user_id])
+    user_info = dbshorts.run_selection("select u.id, username, email, bio, birthday, image_url, banner_url from users u inner join user_session us on u.id = us.user_id where us.user_id=?", 
+                                        [user_id])
     if(user_info == None):
         return Response("User not logged in", mimetype="text/plain", status=500)
     elif(len(user_info) == 0):
@@ -70,9 +73,11 @@ def delete_user():
         traceback.print_exc()
         print("You tried, but failed")
 
-    username = dbshorts.run_selection("select u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", [token])
+    username = dbshorts.run_selection("select u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", 
+                                      [token])
     hash_pass = dbshorts.get_hash_pass(username[0][0], password)
-    user_info = dbshorts.run_selection("select u.id, u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ? and u.password = ?", [token, hash_pass,])
+    user_info = dbshorts.run_selection("select u.id, u.username from users u inner join user_session us on u.id = us.user_id where us.login_token = ? and u.password = ?", 
+                                       [token, hash_pass,])
     if(user_info != None):
         rows = dbshorts.run_deletion("delete from users where id = ?", [user_info[0][0],])
         if(rows == 1):
@@ -82,6 +87,50 @@ def delete_user():
     else:
         return Response("Could not fine user", mimetype="text/plain", status=404)
 
+# Edit User
+@app.patch("/api/user/edit")
+def edit_user():
+    try:
+        token = request.json["login_token"]
+    except:
+        traceback.print_exc()
+        print("something happened, don't ask me")
+    
+    login_token = dbshorts.run_selection("", [])
+    if(login_token != None or login_token != ''):
+        try:
+            new_name = request.json.get("username")
+            new_email = request.json.get("email")
+            new_bday = request.json.get("birthday")
+            new_bio = request.json.get("bio")
+        except:
+            traceback.print_exc()
+            print("Welp, something went wrong")
+            return Response("Data Error, request invalid", mimetype="text/plain", status=400)
+
+        if(new_name != None or new_name != ''):
+            new_info = dbshorts.run_update("update users set username=? from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", 
+                                           [new_name, token])
+        if(new_email != None or new_email != ''):
+            new_info = dbshorts.run_update("update users set email=? from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", 
+                                           [new_email, token])
+        if(new_bday != None or new_bday != ''):
+            new_info = dbshorts.run_update("update users set birthday=? from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", 
+                                           [new_bday, token])
+        if(new_bio != None or new_bio != ''):
+            new_info = dbshorts.run_update("update users set bio=? from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", 
+                                           [new_bio, token])
+    else:
+        return Response("Login Token not valid", mimetype="text/plain", status=400)
+    
+    if(new_info == 1):
+        updated_info = dbshorts.run_selection("select id, username, email, bio, birthday, image_url, banner_url from users u inner join user_session us on u.id = us.user_id where us.login_token = ?", 
+                                              [token,])
+        info_json = json.dumps(updated_info, default=str)
+        print("Account was successfully updated!")
+        return Response(info_json, mimetype="application/json", status=201)
+    else:
+        return Response("Could not update user", mimetype="text/plain", status=400)
 
 # *Login api
 # Login
@@ -98,10 +147,12 @@ def login():
     hash_pass = dbshorts.get_hash_pass(username, password)
     rows_inserted = None
     try:
-        user = dbshorts.run_selection("select id from users u where u.username=? and u.password=?", [username, hash_pass])
+        user = dbshorts.run_selection("select id from users u where u.username=? and u.password=?", 
+                                      [username, hash_pass])
         if(len(user) == 1):
             token = secrets.token_urlsafe(55)
-            rows_inserted = dbshorts.run_insertion("insert into user_session (login_token, user_id) values (?,?)", [token, user[0][0]])
+            rows_inserted = dbshorts.run_insertion("insert into user_session (login_token, user_id) values (?,?)", 
+                                                   [token, user[0][0]])
     except: 
         traceback.print_exc()
         print("Oh no, something went wrong")
@@ -122,13 +173,16 @@ def logout():
         traceback.print_exc()
         print("something went wrong, unknown error")
 
-    rows = dbshorts.run_deletion("delete from user_session where login_token = ?", [login_token,])
+    rows = dbshorts.run_deletion("delete from user_session where login_token = ?", 
+                                 [login_token,])
     if(rows == 1):
         return Response("Logout Successful", mimetype="text/plain", status=200)
     else:
         return Response("DB Error", mimetype="text/plain", status=500)
 
+# TODO Twoots
 
+# TODO Cooments
 
 if(len(sys.argv) > 1):
     mode = sys.argv[1]
